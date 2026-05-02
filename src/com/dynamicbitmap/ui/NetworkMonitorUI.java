@@ -277,5 +277,7 @@ private void update() {
 
         frame.add(new NetworkMonitorUI());
         frame.setVisible(true);
+        
+        // detalles por afinar
     }
 }

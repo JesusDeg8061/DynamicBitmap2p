@@ -8,7 +8,7 @@ public class PeerDiscovery {
 
     private static final int PORT = 8888;
 
-    // 🔥 evitar duplicados
+    //  evitar duplicados
     private static final Set<String> peers = new HashSet<>();
 
     // 🔍 escuchar nodos
@@ -17,7 +17,7 @@ public class PeerDiscovery {
         new Thread(() -> {
             try {
 
-                // 🔥 PERMITE múltiples instancias en mismo puerto
+                //  PERMITE múltiples instancias en mismo puerto
                 DatagramSocket socket = new DatagramSocket(null);
                 socket.setReuseAddress(true);
                 socket.bind(new InetSocketAddress(PORT));
@@ -41,7 +41,7 @@ public class PeerDiscovery {
 
                             String fullPeer = peerIP + ":" + peerPort;
 
-                            // 🔥 evitar duplicados
+                            //  evitar duplicados
                             if (!peers.contains(fullPeer)) {
                                 peers.add(fullPeer);
 

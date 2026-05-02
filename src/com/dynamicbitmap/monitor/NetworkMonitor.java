@@ -44,7 +44,7 @@ public class NetworkMonitor {
             DataOutputStream out = new DataOutputStream(socket.getOutputStream());
             DataInputStream in = new DataInputStream(socket.getInputStream())
         ) {
-            out.writeInt(4); // 👈 tipo STATUS
+            out.writeInt(4); //  tipo STATUS
             return in.readUTF();
 
         } catch (Exception e) {

@@ -27,7 +27,7 @@ public class IdentityManager {
         }
     }
 
-    // 🔹 Generar claves
+    //  Generar claves
     private static KeyPair generateAndSave() throws Exception {
 
         KeyPairGenerator gen = KeyPairGenerator.getInstance("RSA");

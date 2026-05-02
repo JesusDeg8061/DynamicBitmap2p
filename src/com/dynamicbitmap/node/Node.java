@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.Collections;
+import com.dynamicbitmap.network.NetworkEventSender;
 
 import java.io.DataOutputStream;
 import java.io.DataInputStream;
@@ -20,7 +21,7 @@ public class Node {
     private DynamicBitmap bitmap;
     private Map<Integer, byte[]> chunks;
 
-    private List<NodeInfo> neighbors = new ArrayList<>();
+    private List<NodeInfo> neighbors = Collections.synchronizedList(new ArrayList<>());
 
     private Map<String, String> lastKnownBitmaps = new HashMap<>();
     private Map<String, Long> lastSyncTime = new HashMap<>();
@@ -64,6 +65,7 @@ public class Node {
     public String getId() {
         return id;
     }
+    
 
     public Map<Integer, byte[]> getChunks() {
         return chunks;
@@ -77,25 +79,28 @@ public class Node {
     }
 
     //  enviar chunk
-    public void sendChunk(String host, int port, int index) {
-        try (
-            Socket socket = new Socket(host, port);
-            DataOutputStream out = new DataOutputStream(socket.getOutputStream())
-        ) {
-            byte[] data = getChunk(index);
-            if (data == null) return;
+   public void sendChunk(String host, int port, int index) {
+    try (
+        Socket socket = new Socket(host, port);
+        DataOutputStream out = new DataOutputStream(socket.getOutputStream())
+    ) {
+        byte[] data = getChunk(index);
+        if (data == null) return;
 
-            out.writeInt(2);
-            out.writeInt(index);
-            out.writeInt(data.length);
-            out.write(data);
+        out.writeInt(2);
+        out.writeInt(index);
+        out.writeInt(data.length);
+        out.write(data);
 
-            System.out.println("Nodo " + id + " envio chunk " + index + " a puerto " + port);
+        System.out.println("Nodo " + id + " envio chunk " + index + " a puerto " + port);
+        
+        NetworkEventSender.send("SEND:" + id + ":" + port);
+     
 
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+    } catch (Exception e) {
+        e.printStackTrace();
     }
+}
 
     public void sendChunkAsync(String host, int port, int index) {
         executor.submit(() -> sendChunk(host, port, index));
@@ -185,7 +190,8 @@ public class Node {
     Map<NodeInfo, String> bitmapCache = new HashMap<>();
     Map<Integer, Integer> rarity = new HashMap<>();
 
-    // 🔎 1. obtener bitmap UNA vez por nodo
+    //  1. obtener bitmap UNA vez por nodo
+    List<NodeInfo> neighborsCopy = new ArrayList<>(neighbors);
     for (NodeInfo n : neighbors) {
         String bitmap = requestBitmap(n.host, n.port);
 
@@ -200,7 +206,7 @@ public class Node {
         }
     }
 
-    // 🎯 2. ordenar chunks por rareza
+    //  2. ordenar chunks por rareza
     List<Integer> chunksToDownload = new ArrayList<>();
 
     for (int i = 0; i < bitmap.getSize(); i++) {
@@ -216,7 +222,7 @@ public class Node {
         )
     );
 
-    // 🔥 3. descargar
+    //  3. descargar
     for (int i : chunksToDownload) {
 
         List<NodeInfo> availableNodes = new ArrayList<>();
@@ -246,6 +252,8 @@ public class Node {
                     System.out.println("Nodo " + id +
                             " descargo chunk " + chunkIndex +
                             " desde " + selected.port);
+                    
+                    NetworkEventSender.send("RECEIVE:" + selected.port + ":" + id);
                 }
             });
         }

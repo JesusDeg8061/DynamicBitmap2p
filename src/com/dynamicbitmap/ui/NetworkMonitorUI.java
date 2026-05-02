@@ -212,7 +212,7 @@ private void update() {
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // 🔗 conexiones
+        //  conexiones
         g2.setStroke(new BasicStroke(2.5f));
         g2.setColor(new Color(120,120,120));
 
@@ -226,7 +226,7 @@ private void update() {
             }
         }
 
-        // 📦 paquetes (chunks)
+        //  paquetes (chunks)
         for (Packet p : packets) {
 
             // glow
@@ -242,7 +242,7 @@ private void update() {
             g2.fillOval(p.getX(), p.getY(), p.size, p.size);
         }
 
-        // 🟢 nodos
+        //  nodos
         for (Node n : nodes.values()) {
 
             if (n.isActive()) {

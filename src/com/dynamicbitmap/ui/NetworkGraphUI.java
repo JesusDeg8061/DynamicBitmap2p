@@ -2,10 +2,14 @@ package com.dynamicbitmap.ui;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class NetworkGraphUI extends JPanel {
+
+    public static NetworkGraphUI instance;
 
     static class Node {
         int x, y;
@@ -28,7 +32,7 @@ public class NetworkGraphUI extends JPanel {
         }
 
         public void update() {
-            progress += 0.02;
+            progress += 0.03;
         }
 
         public boolean isDone() {
@@ -44,43 +48,65 @@ public class NetworkGraphUI extends JPanel {
         }
     }
 
-    private List<Node> nodes = new ArrayList<>();
+    private Map<String, Node> nodeMap = new HashMap<>();
     private List<Packet> packets = new ArrayList<>();
 
     public NetworkGraphUI() {
 
-        setBackground(new Color(30, 30, 30));
+        instance = this;
 
-        // posiciones de nodos
-        nodes.add(new Node("A", 100, 150));
-        nodes.add(new Node("B", 300, 80));
-        nodes.add(new Node("C", 500, 150));
+        setBackground(new Color(30,30,30));
 
-        // timer de animación
-        Timer timer = new Timer(30, e -> {
+        //  timer de render
+        new javax.swing.Timer(30, e -> {
             updatePackets();
             repaint();
-        });
-        timer.start();
-
-        // generar tráfico
-        new Thread(() -> {
-            try {
-                while (true) {
-                    Thread.sleep(500);
-
-                    Node a = nodes.get((int)(Math.random()*nodes.size()));
-                    Node b = nodes.get((int)(Math.random()*nodes.size()));
-
-                    if (a != b) {
-                        packets.add(new Packet(a, b));
-                    }
-
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
         }).start();
+    }
+
+    //  CREA NODOS DINÁMICOS (FIX POSICIÓN)
+    private Node getOrCreateNode(String id) {
+
+        if (!nodeMap.containsKey(id)) {
+
+            int index = nodeMap.size();
+
+            //  FIX: usar tamaño fijo si aún no está renderizado
+            int width = getWidth() > 0 ? getWidth() : 700;
+            int height = getHeight() > 0 ? getHeight() : 300;
+
+            int centerX = width / 2;
+            int centerY = height / 2;
+            int radius = 120;
+
+            double angle = 2 * Math.PI * index / 8;
+
+            int x = (int)(centerX + radius * Math.cos(angle));
+            int y = (int)(centerY + radius * Math.sin(angle));
+
+            Node node = new Node(id, x, y);
+
+            nodeMap.put(id, node);
+
+            //  FORZAR REDIBUJO
+            repaint();
+        }
+
+        return nodeMap.get(id);
+    }
+
+    //  MÉTODO DE TRÁFICO (THREAD SAFE)
+    public static void sendPacket(String fromId, String toId) {
+
+        if (instance == null) return;
+
+        SwingUtilities.invokeLater(() -> {
+
+            Node from = instance.getOrCreateNode(fromId);
+            Node to = instance.getOrCreateNode(toId);
+
+            instance.packets.add(new Packet(from, to));
+        });
     }
 
     private void updatePackets() {
@@ -96,39 +122,41 @@ public class NetworkGraphUI extends JPanel {
 
         Graphics2D g2 = (Graphics2D) g;
 
-        //  dibujar conexiones
-        g2.setColor(Color.DARK_GRAY);
-        for (Node n1 : nodes) {
-            for (Node n2 : nodes) {
+        //  conexiones
+        g2.setColor(new Color(60,60,60));
+        for (Node n1 : nodeMap.values()) {
+            for (Node n2 : nodeMap.values()) {
                 if (n1 != n2) {
                     g2.drawLine(n1.x, n1.y, n2.x, n2.y);
                 }
             }
         }
 
-        // 📦 dibujar paquetes
-        g2.setColor(new Color(0, 255, 150));
+        //  paquetes
+        g2.setColor(new Color(0,255,150));
         for (Packet p : packets) {
-            g2.fillOval(p.getX(), p.getY(), 6, 6);
+            g2.fillOval(p.getX(), p.getY(), 10, 10);
         }
 
-        // 🟢 dibujar nodos
-        for (Node n : nodes) {
-            g2.setColor(new Color(0, 255, 150));
-            g2.fillOval(n.x - 15, n.y - 15, 30, 30);
+        //  nodos
+        for (Node n : nodeMap.values()) {
+            g2.setColor(new Color(0,255,150));
+            g2.fillOval(n.x - 18, n.y - 18, 36, 36);
 
             g2.setColor(Color.BLACK);
-            g2.drawString(n.name, n.x - 5, n.y + 5);
+            g2.drawString(n.name, n.x - 15, n.y + 5);
         }
     }
 
     public static void main(String[] args) {
 
-        JFrame frame = new JFrame("Network Animation");
-        frame.setSize(650, 300);
+        JFrame frame = new JFrame("DynamicBitmap Monitor");
+        frame.setSize(700, 320);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         frame.add(new NetworkGraphUI());
         frame.setVisible(true);
+
+        
     }
 }

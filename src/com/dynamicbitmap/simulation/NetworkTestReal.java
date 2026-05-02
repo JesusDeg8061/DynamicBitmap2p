@@ -21,7 +21,7 @@ public class NetworkTestReal {
         try {
             List<byte[]> chunks = FileChunker.splitFile("archivo.txt", 1024);
 
-            // 🔥 DISTRIBUCIÓN REAL
+            //  DISTRIBUCIÓN
             for (int i = 0; i < chunks.size(); i++) {
 
                 if (i % 3 == 0) {
@@ -40,14 +40,14 @@ public class NetworkTestReal {
             return;
         }
 
-        // 🚀 SERVIDORES
+        //  SERVIDORES
         new Thread(new NodeServer(5000, A)).start();
         new Thread(new NodeServer(5001, B)).start();
         new Thread(new NodeServer(5002, C)).start();
 
         Thread.sleep(2000);
 
-        // 🔗 CONEXIONES
+        //  CONEXIONES
         A.addNeighbor(new NodeInfo("localhost", 5001));
 
         B.addNeighbor(new NodeInfo("localhost", 5000));
@@ -56,12 +56,12 @@ public class NetworkTestReal {
         C.addNeighbor(new NodeInfo("localhost", 5001));
         C.addNeighbor(new NodeInfo("localhost", 5000));
 
-        // 🔄 RED VIVA
+        //  RED VIVA
         A.startAutoSync(2000);
         B.startAutoSync(2000);
         C.startAutoSync(2000);
 
-        // 📊 MONITOR EN VIVO
+        //  MONITOR EN VIVO
         NetworkMonitor monitor = new NetworkMonitor(
             Arrays.asList(
                 new NodeInfo("localhost", 5000),

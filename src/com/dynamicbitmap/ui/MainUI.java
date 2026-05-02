@@ -22,14 +22,12 @@ public class MainUI extends JFrame {
     private int myPort;
     private JTextArea log;
     private Node node;
-    //  SOLO UNA VEZ EN TODA LA APP
-    //private static boolean monitorStarted = false;
 
     private Set<String> shownPeers = new HashSet<>();
     private Map<String, Integer> myFiles = new HashMap<>();
     private Map<String, byte[]> fileKeys = new HashMap<>();
+    private Map<String, Long> fileSizes = new HashMap<>();
 
-    //  colores globales
     private Color bg = new Color(30,30,30);
     private Color logBg = new Color(20,20,20);
     private Color green = new Color(0,255,150);
@@ -45,7 +43,7 @@ public class MainUI extends JFrame {
 
         node = new Node(id, 100);
         new Thread(new NodeServer(myPort, node)).start();
-        //  REGISTRAR NODO EN EL MONITOR
+
         com.dynamicbitmap.network.NetworkEventSender.send("NODE:" + id);
 
         JLabel label = new JLabel("ID: " + id + " | Puerto: " + myPort);
@@ -63,11 +61,10 @@ public class MainUI extends JFrame {
         JButton upload = new JButton("Subir archivo");
         JButton filesBtn = new JButton("Archivos");
 
-        //  estilo botones
         styleButton(upload);
         styleButton(filesBtn);
 
-        //  SUBIR (CON CIFRADO)
+        //  SUBIR ARCHIVO
         upload.addActionListener(e -> {
 
             JFileChooser chooser = new JFileChooser();
@@ -78,19 +75,18 @@ public class MainUI extends JFrame {
 
                 if (file != null) {
 
+                    long fileSize = file.length();
+                    fileSizes.put(file.getName(), fileSize);
+                    node.setFileSize(fileSize);
+
                     log("📂 Archivo: " + file.getName());
 
                     byte[] fileData = Files.readAllBytes(file.toPath());
 
-                    //  generar clave
                     SecretKey key = CryptoUtils.generateKey();
-
-                    //  cifrar
                     byte[] encrypted = CryptoUtils.encrypt(fileData, key);
 
-                    //  hash
                     String hash = CryptoUtils.sha256(fileData);
-
                     log("🔐 ID: " + hash);
 
                     List<byte[]> chunks =
@@ -104,9 +100,9 @@ public class MainUI extends JFrame {
                     fileKeys.put(file.getName(), key.getEncoded());
 
                     log("📦 " + chunks.size() + " chunks");
+
                     node.smartReplicate();
                     log("🚀 Distribuyendo...");
-
                 }
 
             } catch (Exception ex) {
@@ -127,37 +123,71 @@ public class MainUI extends JFrame {
 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setVisible(true);
-        
     }
 
-    //  ventana archivos
+    //  VENTANA ARCHIVOS
     private void openFilesWindow() {
 
         JFrame frame = new JFrame("Mis archivos");
-        frame.setSize(300, 300);
+        frame.setSize(320, 320);
         frame.setLayout(new BorderLayout());
         frame.getContentPane().setBackground(bg);
 
         DefaultListModel<String> model = new DefaultListModel<>();
-
-        for (String name : myFiles.keySet()) {
-            model.addElement(name);
-        }
-
         JList<String> list = new JList<>(model);
+
         list.setBackground(logBg);
         list.setForeground(green);
 
         JButton download = new JButton("Descargar");
         styleButton(download);
 
+        //  ACTUALIZACIÓN EN TIEMPO REAL
+        new Thread(() -> {
+            while (true) {
+                try {
+                    Thread.sleep(1000);
+
+                    SwingUtilities.invokeLater(() -> {
+
+                        //  guardar selección actual
+String selected = list.getSelectedValue();
+
+model.clear();
+
+for (String name : myFiles.keySet()) {
+
+    long total = fileSizes.getOrDefault(name, 0L);
+    long current = node.getCurrentSize();
+
+    String item = name + " | " +
+            formatSize(current) + " / " + formatSize(total);
+
+    model.addElement(item);
+
+    //  restaurar selección
+    if (selected != null && selected.startsWith(name)) {
+        list.setSelectedValue(item, true);
+    }
+}
+                    });
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
+
+        //  DESCARGA CORREGIDA
         download.addActionListener(e -> {
 
             String selected = list.getSelectedValue();
 
             if (selected != null) {
 
-                log("📥 Descargando: " + selected);
+                String fileName = selected.split("\\|")[0].trim();
+
+                log("📥 Descargando: " + fileName);
 
                 node.downloadFromNetwork();
 
@@ -168,7 +198,7 @@ public class MainUI extends JFrame {
                         byte[] encryptedData =
                                 FileAssembler.assembleToBytes(node.getChunks());
 
-                        byte[] keyBytes = fileKeys.get(selected);
+                        byte[] keyBytes = fileKeys.get(fileName);
 
                         SecretKey key =
                                 CryptoUtils.fromBytes(keyBytes);
@@ -177,7 +207,7 @@ public class MainUI extends JFrame {
                                 CryptoUtils.decrypt(encryptedData, key);
 
                         Files.write(
-                                Paths.get("reconstruido_" + selected),
+                                Paths.get("reconstruido_" + fileName),
                                 decrypted
                         );
 
@@ -198,63 +228,61 @@ public class MainUI extends JFrame {
 
     private void startDiscovery() {
 
-    log("🚀 Nodo en puerto " + myPort);
+        log("🚀 Nodo en puerto " + myPort);
 
-    PeerDiscovery.startListening(myPort);
-    PeerDiscovery.startBroadcast(myPort);
+        PeerDiscovery.startListening(myPort);
+        PeerDiscovery.startBroadcast(myPort);
 
-    //  HEARTBEAT → para el monitor
-    new Thread(() -> {
-        while (true) {
-            try {
-                Thread.sleep(3000);
+        // 🔥 HEARTBEAT
+        new Thread(() -> {
+            while (true) {
+                try {
+                    Thread.sleep(3000);
 
-                com.dynamicbitmap.network.NetworkEventSender
-                        .send("NODE:" + node.getId());
+                    com.dynamicbitmap.network.NetworkEventSender
+                            .send("NODE:" + node.getId());
 
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    }).start();
-
-    // 🔍 detección de peers
-    new Thread(() -> {
-        while (true) {
-            try {
-                Thread.sleep(1500);
-
-                for (String peer : PeerDiscovery.getPeers()) {
-
-                    if (shownPeers.add(peer)) {
-
-                        log("🔗 Nodo detectado: " + peer);
-
-                        String[] parts = peer.split(":");
-                        String host = parts[0];
-                        int port = Integer.parseInt(parts[1]);
-
-                        node.addNeighbor(new NodeInfo(host, port));
-
-                        //  CLAVE: replicar inmediatamente al detectar nodo nuevo
-                        new Thread(() -> {
-                            try {
-                                Thread.sleep(500); // pequeña espera
-                                node.smartReplicate();
-                            } catch (Exception ignored) {}
-                        }).start();
-                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
-
-            } catch (Exception e) {
-                e.printStackTrace();
             }
-        }
-    }).start();
+        }).start();
 
-    //  SINCRONIZACIÓN CONTINUA (MUY IMPORTANTE)
-    node.startAutoSync(3000);
-}
+        // 🔍 DETECTAR NODOS
+        new Thread(() -> {
+            while (true) {
+                try {
+                    Thread.sleep(1500);
+
+                    for (String peer : PeerDiscovery.getPeers()) {
+
+                        if (shownPeers.add(peer)) {
+
+                            log("🔗 Nodo detectado: " + peer);
+
+                            String[] parts = peer.split(":");
+                            String host = parts[0];
+                            int port = Integer.parseInt(parts[1]);
+
+                            node.addNeighbor(new NodeInfo(host, port));
+
+                            new Thread(() -> {
+                                try {
+                                    Thread.sleep(500);
+                                    node.smartReplicate();
+                                } catch (Exception ignored) {}
+                            }).start();
+                        }
+                    }
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
+
+        node.startAutoSync(3000);
+    }
 
     private void styleButton(JButton btn) {
         btn.setBackground(bg);
@@ -264,5 +292,15 @@ public class MainUI extends JFrame {
 
     private void log(String msg) {
         SwingUtilities.invokeLater(() -> log.append(msg + "\n"));
+    }
+
+    //  FORMATO TAMAÑO
+    private String formatSize(long size) {
+
+        if (size < 1024) return size + " B";
+        if (size < 1024 * 1024) return (size / 1024) + " KB";
+        if (size < 1024 * 1024 * 1024) return (size / (1024 * 1024)) + " MB";
+
+        return (size / (1024 * 1024 * 1024)) + " GB";
     }
 }

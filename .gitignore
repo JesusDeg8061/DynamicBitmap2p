@@ -1,1 +1,54 @@
+# Java / NetBeans
+/build/
+/dist/
+/target/
+/out/
+/bin/
 
+*.class
+*.jar
+*.war
+*.ear
+
+/nbproject/private/
+/nbbuild/
+/nbdist/
+/.nb-gradle/
+
+*.log
+
+# Datos privados de DynamicBitmap
+/chunks/
+*.chunk
+/metadata/
+/keys/
+/identity/
+
+# Archivos reconstruidos
+reconstruido_*
+
+# Temporales
+*.tmp
+*.bak
+*.old
+
+# Config sensible
+.env
+*.env
+config.local
+config.local.*
+application-local.properties
+
+*.key
+*.pem
+*.p12
+*.jks
+
+# Sistema / IDE
+.DS_Store
+Thumbs.db
+desktop.ini
+
+.idea/
+*.iml
+.vscode/

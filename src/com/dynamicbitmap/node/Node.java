@@ -3,8 +3,10 @@ package com.dynamicbitmap.node;
 import com.dynamicbitmap.core.DynamicBitmap;
 import com.dynamicbitmap.network.NodeInfo;
 import com.dynamicbitmap.network.NetworkEventSender;
+import com.dynamicbitmap.network.RelayClient;
 import com.dynamicbitmap.storage.ChunkStorage;
 import com.dynamicbitmap.metadata.FileMetadata;
+import com.dynamicbitmap.metadata.MetadataStorage;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -28,10 +30,10 @@ public class Node {
 
     private DynamicBitmap bitmap;
 
-    //  archivo principal temporal
+    // archivo principal temporal
     private static final String DEFAULT_FILE = "main";
 
-    //  MULTIARCHIVO
+    // MULTIARCHIVO
     private Map<String, Map<Integer, byte[]>> fileChunks =
             new ConcurrentHashMap<>();
 
@@ -57,28 +59,168 @@ public class Node {
 
     private long fileSize = 0;
 
+    private RelayClient relayClient;
+
     public Node(String id, int size) {
 
         this.id = id;
 
         this.bitmap = new DynamicBitmap(size);
 
-        //  mapa inicial
+        // mapa inicial
         fileChunks.put(
                 DEFAULT_FILE,
                 new ConcurrentHashMap<>()
         );
 
+        loadPersistedMetadata();
+
         loadPersistedChunks();
     }
 
-    //  OBTENER MAPA ACTUAL
+    // CONFIGURAR RELAY
+    public void setRelayClient(RelayClient relayClient) {
+
+        this.relayClient = relayClient;
+    }
+
+    // RECIBIR CHUNK DESDE RELAY
+    public void receiveRelayChunk(int index, byte[] data) {
+
+        receiveChunk(index, data);
+    }
+
+    // ENVIAR CHUNK POR RELAY
+    public void sendChunkViaRelay(
+            String targetNodeId,
+            int index
+    ) {
+
+        if (relayClient == null) {
+
+            System.out.println(
+                    "RelayClient no configurado"
+            );
+
+            return;
+        }
+
+        if (targetNodeId == null || targetNodeId.isEmpty()) {
+
+            System.out.println(
+                    "No se puede enviar por relay: targetNodeId vacío"
+            );
+
+            return;
+        }
+
+        byte[] data =
+                getChunk(index);
+
+        if (data == null) {
+            return;
+        }
+
+        byte[] payload =
+                RelayClient.buildChunkPayload(
+                        index,
+                        data
+                );
+
+        if (payload == null) {
+            return;
+        }
+
+        relayClient.send(
+                targetNodeId,
+                payload
+        );
+
+        System.out.println(
+                "Nodo "
+                        + id
+                        + " envio chunk "
+                        + index
+                        + " por relay a "
+                        + targetNodeId
+        );
+    }
+
+    public void sendChunkViaRelayAsync(
+            String targetNodeId,
+            int index
+    ) {
+
+        executor.submit(() ->
+                sendChunkViaRelay(
+                        targetNodeId,
+                        index
+                )
+        );
+    }
+
+    // OBTENER MAPA ACTUAL
     private Map<Integer, byte[]> getMainChunks() {
 
         return fileChunks.get(DEFAULT_FILE);
     }
 
-    //  GUARDAR CHUNK
+    // REGISTRAR ARCHIVO EN CATÁLOGO
+    public void registerFile(FileMetadata metadata) {
+
+        if (metadata == null) {
+            return;
+        }
+
+        files.put(
+                metadata.getFileId(),
+                metadata
+        );
+
+        MetadataStorage.saveMetadata(
+                id,
+                metadata
+        );
+    }
+
+    // OBTENER TODOS LOS ARCHIVOS DEL CATÁLOGO
+    public Map<String, FileMetadata> getFiles() {
+
+        return files;
+    }
+
+    // OBTENER METADATA DE UN ARCHIVO
+    public FileMetadata getFileMetadata(String fileId) {
+
+        return files.get(fileId);
+    }
+
+    // CARGAR CATÁLOGO PERSISTENTE
+    private void loadPersistedMetadata() {
+
+        List<FileMetadata> metadataList =
+                MetadataStorage.loadAllMetadata(id);
+
+        for (FileMetadata metadata : metadataList) {
+
+            if (metadata != null) {
+
+                files.put(
+                        metadata.getFileId(),
+                        metadata
+                );
+
+                System.out.println(
+                        "Nodo "
+                                + id
+                                + " cargó metadata de archivo "
+                                + metadata.getFileName()
+                );
+            }
+        }
+    }
+
+    // GUARDAR CHUNK
     public void storeChunk(int index, byte[] data) {
 
         Map<Integer, byte[]> chunks =
@@ -155,16 +297,19 @@ public class Node {
         }
     }
 
-    //  ENVIAR CHUNK
+    // ENVIAR CHUNK DIRECTO CON FALLBACK A RELAY
     public void sendChunk(
-            String host,
-            int port,
+            NodeInfo target,
             int index
     ) {
 
+        if (target == null) {
+            return;
+        }
+
         try (
                 Socket socket =
-                        new Socket(host, port);
+                        new Socket(target.host, target.port);
 
                 DataOutputStream out =
                         new DataOutputStream(
@@ -192,32 +337,79 @@ public class Node {
                             + id
                             + " envio chunk "
                             + index
-                            + " a puerto "
-                            + port
+                            + " directo a puerto "
+                            + target.port
             );
 
             NetworkEventSender.send(
                     "SEND:"
                             + id
                             + ":"
-                            + port
+                            + target.port
             );
 
         } catch (Exception e) {
 
-            neighbors.removeIf(n ->
-                    n.host.equals(host)
-                            &&
-                            n.port == port
+            System.out.println(
+                    "No se pudo enviar chunk directo a "
+                            + target.port
             );
 
-            System.out.println(
-                    "⚠ No se pudo enviar chunk a "
-                            + port
-            );
+            if (target.hasNodeId()) {
+
+                System.out.println(
+                        "Intentando enviar chunk "
+                                + index
+                                + " por relay a "
+                                + target.nodeId
+                );
+
+                sendChunkViaRelay(
+                        target.nodeId,
+                        index
+                );
+
+            } else {
+
+                neighbors.removeIf(n ->
+                        n.host.equals(target.host)
+                                &&
+                                n.port == target.port
+                );
+            }
         }
     }
 
+    // MÉTODO ORIGINAL CONSERVADO
+    public void sendChunk(
+            String host,
+            int port,
+            int index
+    ) {
+
+        sendChunk(
+                new NodeInfo(
+                        host,
+                        port
+                ),
+                index
+        );
+    }
+
+    public void sendChunkAsync(
+            NodeInfo target,
+            int index
+    ) {
+
+        executor.submit(() ->
+                sendChunk(
+                        target,
+                        index
+                )
+        );
+    }
+
+    // MÉTODO ORIGINAL CONSERVADO
     public void sendChunkAsync(
             String host,
             int port,
@@ -225,11 +417,15 @@ public class Node {
     ) {
 
         executor.submit(() ->
-                sendChunk(host, port, index)
+                sendChunk(
+                        host,
+                        port,
+                        index
+                )
         );
     }
 
-    //  PEDIR BITMAP
+    // PEDIR BITMAP
     public String requestBitmap(
             String host,
             int port
@@ -266,7 +462,7 @@ public class Node {
         }
     }
 
-    //  PEDIR CHUNK
+    // PEDIR CHUNK
     public byte[] requestChunk(
             String host,
             int port,
@@ -325,7 +521,7 @@ public class Node {
         }
     }
 
-    //  DISTRIBUCIÓN REAL
+    // DISTRIBUCIÓN REAL
     public void smartReplicate() {
 
         if (neighbors.isEmpty()) {
@@ -379,21 +575,20 @@ public class Node {
             System.out.println(
                     "Nodo "
                             + id
-                            + " → enviando chunk "
+                            + " enviando chunk "
                             + chunkId
                             + " a "
                             + target.port
             );
 
             sendChunkAsync(
-                    target.host,
-                    target.port,
+                    target,
                     chunkId
             );
         }
     }
 
-    //  DESCARGA DISTRIBUIDA
+    // DESCARGA DISTRIBUIDA
     public void downloadFromNetwork() {
 
         Map<NodeInfo, String> bitmapCache =
@@ -560,7 +755,7 @@ public class Node {
         }
     }
 
-    //  AUTO SYNC
+    // AUTO SYNC
     public void startAutoSync(long intervalMs) {
 
         new Thread(() -> {
@@ -587,6 +782,8 @@ public class Node {
                 + id
                 + " | chunks: "
                 + chunkCount()
+                + " | archivos: "
+                + files.size()
                 + " | bitmap: "
                 + bitmap.toString();
     }
@@ -624,7 +821,7 @@ public class Node {
         return total;
     }
 
-    //  RECUPERAR CHUNKS
+    // RECUPERAR CHUNKS
     private void loadPersistedChunks() {
 
         File[] files =

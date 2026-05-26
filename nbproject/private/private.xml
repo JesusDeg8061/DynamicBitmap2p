@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project-private xmlns="http://www.netbeans.org/ns/project-private/1">
+    <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
+    <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+        <group>
+            <file>file:/C:/Users/degol/Documents/NetBeansProjects/DynamicBitmap/src/com/dynamicbitmap/core/DynamicBitmap.java</file>
+            <file>file:/C:/Users/degol/Documents/NetBeansProjects/DynamicBitmap/src/com/dynamicbitmap/node/Node.java</file>
+            <file>file:/C:/Users/degol/Documents/NetBeansProjects/DynamicBitmap/src/com/dynamicbitmap/simulation/NetworkSimulator.java</file>
+            <file>file:/C:/Users/degol/Documents/NetBeansProjects/DynamicBitmap/src/com/dynamicbitmap/network/NodeServer.java</file>
+            <file>file:/C:/Users/degol/Documents/NetBeansProjects/DynamicBitmap/src/com/dynamicbitmap/simulation/NetworkTestReal.java</file>
+            <file>file:/C:/Users/degol/Documents/NetBeansProjects/DynamicBitmap/src/com/dynamicbitmap/network/NodeInfo.java</file>
+            <file>file:/C:/Users/degol/Documents/NetBeansProjects/DynamicBitmap/src/com/dynamicbitmap/core/FileChunker.java</file>
+            <file>file:/C:/Users/degol/Documents/NetBeansProjects/DynamicBitmap/src/com/dynamicbitmap/core/FileAssembler.java</file>
+            <file>file:/C:/Users/degol/Documents/NetBeansProjects/DynamicBitmap/src/com/dynamicbitmap/monitor/NetworkMonitor.java</file>
+            <file>file:/C:/Users/degol/Documents/NetBeansProjects/DynamicBitmap/src/com/dynamicbitmap/ui/NetworkUI.java</file>
+            <file>file:/C:/Users/degol/Documents/NetBeansProjects/DynamicBitmap/src/com/dynamicbitmap/ui/NetworkGraphUI.java</file>
+            <file>file:/C:/Users/degol/Documents/NetBeansProjects/DynamicBitmap/src/com/dynamicbitmap/core/IdentityManager.java</file>
+            <file>file:/C:/Users/degol/Documents/NetBeansProjects/DynamicBitmap/src/com/dynamicbitmap/ui/StartUI.java</file>
+            <file>file:/C:/Users/degol/Documents/NetBeansProjects/DynamicBitmap/src/com/dynamicbitmap/ui/MainUI.java</file>
+            <file>file:/C:/Users/degol/Documents/NetBeansProjects/DynamicBitmap/src/com/dynamicbitmap/network/PeerDiscovery.java</file>
+            <file>file:/C:/Users/degol/Documents/NetBeansProjects/DynamicBitmap/src/com/dynamicbitmap/security/CryptoUtils.java</file>
+            <file>file:/C:/Users/degol/Documents/NetBeansProjects/DynamicBitmap/src/com/dynamicbitmap/network/NetworkEventSender.java</file>
+            <file>file:/C:/Users/degol/Documents/NetBeansProjects/DynamicBitmap/src/com/dynamicbitmap/ui/NetworkMonitorUI.java</file>
+            <file>file:/C:/Users/degol/Documents/NetBeansProjects/DynamicBitmap/src/com/dynamicbitmap/storage/ChunkStorage.java</file>
+            <file>file:/C:/Users/degol/Documents/NetBeansProjects/DynamicBitmap/src/com/dynamicbitmap/metadata/FileMetadata.java</file>
+        </group>
+    </open-files>
+</project-private>

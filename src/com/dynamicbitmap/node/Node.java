@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Base64;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -60,6 +61,12 @@ public class Node {
     private long fileSize = 0;
 
     private RelayClient relayClient;
+    // RESPUESTAS RELAY
+private Map<String, String> relayBitmapResponses =
+        new ConcurrentHashMap<>();
+
+private Map<String, byte[]> relayChunkResponses =
+        new ConcurrentHashMap<>();
 
     public Node(String id, int size) {
 
@@ -84,11 +91,15 @@ public class Node {
         this.relayClient = relayClient;
     }
 
-    // RECIBIR CHUNK DESDE RELAY
     public void receiveRelayChunk(int index, byte[] data) {
 
-        receiveChunk(index, data);
-    }
+    receiveChunk(index, data);
+
+    relayChunkResponses.put(
+            String.valueOf(index),
+            data
+    );
+}
 
     // ENVIAR CHUNK POR RELAY
     public void sendChunkViaRelay(
@@ -158,6 +169,100 @@ public class Node {
                 )
         );
     }
+    
+    public String requestBitmapViaRelay(
+        String targetNodeId
+) {
+
+    try {
+
+        if (relayClient == null) {
+            return null;
+        }
+
+        String request =
+                "BITMAP_REQUEST";
+
+        relayClient.send(
+                targetNodeId,
+                request.getBytes()
+        );
+
+        long start =
+                System.currentTimeMillis();
+
+        while (
+                System.currentTimeMillis() - start
+                        < 3000
+        ) {
+
+            String bitmap =
+                    relayBitmapResponses.remove(
+                            targetNodeId
+                    );
+
+            if (bitmap != null) {
+                return bitmap;
+            }
+
+            Thread.sleep(50);
+        }
+
+    } catch (Exception e) {
+
+        e.printStackTrace();
+    }
+
+    return null;
+}
+
+public byte[] requestChunkViaRelay(
+        String targetNodeId,
+        int index
+) {
+
+    try {
+
+        if (relayClient == null) {
+            return null;
+        }
+
+        String request =
+                "CHUNK_REQUEST:"
+                        + index;
+
+        relayClient.send(
+                targetNodeId,
+                request.getBytes()
+        );
+
+        long start =
+                System.currentTimeMillis();
+
+        while (
+                System.currentTimeMillis() - start
+                        < 5000
+        ) {
+
+            byte[] data =
+                    relayChunkResponses.remove(
+                            String.valueOf(index)
+                    );
+
+            if (data != null) {
+                return data;
+            }
+
+            Thread.sleep(50);
+        }
+
+    } catch (Exception e) {
+
+        e.printStackTrace();
+    }
+
+    return null;
+}
 
     // OBTENER MAPA ACTUAL
     private Map<Integer, byte[]> getMainChunks() {
@@ -287,15 +392,21 @@ public class Node {
         return getMainChunks();
     }
 
-    public void removeChunk(int index) {
+public void removeChunk(int index) {
 
-        if (hasChunk(index)) {
+    if (hasChunk(index)) {
 
-            getMainChunks().remove(index);
+        getMainChunks().remove(index);
 
-            bitmap.clear(index);
-        }
+        bitmap.clear(index);
+
+        ChunkStorage.deleteChunk(
+                id,
+                DEFAULT_FILE,
+                index
+        );
     }
+}
 
     // ENVIAR CHUNK DIRECTO CON FALLBACK A RELAY
     public void sendChunk(
@@ -331,6 +442,7 @@ public class Node {
             out.writeInt(data.length);
 
             out.write(data);
+            out.flush();
 
             System.out.println(
                     "Nodo "
@@ -426,41 +538,73 @@ public class Node {
     }
 
     // PEDIR BITMAP
-    public String requestBitmap(
-            String host,
-            int port
+public String requestBitmap(
+        String host,
+        int port
+) {
+
+    try (
+            Socket socket =
+                    new Socket(host, port);
+
+            DataOutputStream out =
+                    new DataOutputStream(
+                            socket.getOutputStream()
+                    );
+
+            DataInputStream in =
+                    new DataInputStream(
+                            socket.getInputStream()
+                    )
     ) {
 
-        try (
-                Socket socket =
-                        new Socket(host, port);
+        socket.setSoTimeout(3000);
 
-                DataOutputStream out =
-                        new DataOutputStream(
-                                socket.getOutputStream()
-                        );
+        out.writeInt(1);
 
-                DataInputStream in =
-                        new DataInputStream(
-                                socket.getInputStream()
-                        )
-        ) {
+        return in.readUTF();
 
-            out.writeInt(1);
+    } catch (Exception e) {
 
-            return in.readUTF();
+        NodeInfo relayNode = null;
 
-        } catch (Exception e) {
+        for (NodeInfo n : neighbors) {
 
-            neighbors.removeIf(n ->
+            if (
                     n.host.equals(host)
                             &&
                             n.port == port
+            ) {
+
+                relayNode = n;
+                break;
+            }
+        }
+
+        if (
+                relayNode != null
+                        &&
+                        relayNode.hasNodeId()
+        ) {
+
+            System.out.println(
+                    "Bitmap directo falló. Intentando relay..."
             );
 
-            return null;
+            return requestBitmapViaRelay(
+                    relayNode.nodeId
+            );
         }
+
+        neighbors.removeIf(n ->
+                n.host.equals(host)
+                        &&
+                        n.port == port
+        );
+
+        return null;
     }
+}
 
     // PEDIR CHUNK
     public byte[] requestChunk(
@@ -524,70 +668,66 @@ public class Node {
     // DISTRIBUCIÓN REAL
     public void smartReplicate() {
 
-        if (neighbors.isEmpty()) {
-            return;
-        }
-
-        List<NodeInfo> allNodes =
-                new ArrayList<>(neighbors);
-
-        int totalNodes =
-                allNodes.size();
-
-        if (totalNodes == 0) {
-            return;
-        }
-
-        long now =
-                System.currentTimeMillis();
-
-        for (
-                Map.Entry<Integer, byte[]> entry :
-                getMainChunks().entrySet()
-        ) {
-
-            int chunkId =
-                    entry.getKey();
-
-            int ownerIndex =
-                    chunkId % totalNodes;
-
-            NodeInfo target =
-                    allNodes.get(ownerIndex);
-
-            String key =
-                    target.host
-                            + ":"
-                            + target.port;
-
-            long last =
-                    lastSyncTime.getOrDefault(
-                            key,
-                            0L
-                    );
-
-            if (now - last < 3000) {
-                continue;
-            }
-
-            lastSyncTime.put(key, now);
-
-            System.out.println(
-                    "Nodo "
-                            + id
-                            + " enviando chunk "
-                            + chunkId
-                            + " a "
-                            + target.port
-            );
-
-            sendChunkAsync(
-                    target,
-                    chunkId
-            );
-        }
+    if (neighbors.isEmpty()) {
+        return;
     }
 
+    long now =
+            System.currentTimeMillis();
+
+    for (
+            Map.Entry<Integer, byte[]> entry :
+            getMainChunks().entrySet()
+    ) {
+
+        int chunkId =
+                entry.getKey();
+
+        NodeInfo target =
+                getChunkOwner(
+                        chunkId
+                );
+
+        if (target == null) {
+            continue;
+        }
+
+        String key =
+                target.host
+                        + ":"
+                        + target.port;
+
+        long last =
+                lastSyncTime.getOrDefault(
+                        key,
+                        0L
+                );
+
+        if (now - last < 3000) {
+            continue;
+        }
+
+        lastSyncTime.put(
+                key,
+                now
+        );
+
+        System.out.println(
+                "Nodo "
+                        + id
+                        + " enviando chunk "
+                        + chunkId
+                        + " a "
+                        + target.nodeId
+        );
+
+        sendChunkAsync(
+                target,
+                chunkId
+        );
+    }
+    rebalanceStorage();
+}
     // DESCARGA DISTRIBUIDA
     public void downloadFromNetwork() {
 
@@ -767,6 +907,7 @@ public class Node {
                     Thread.sleep(intervalMs);
 
                     downloadFromNetwork();
+                    smartReplicate();
 
                 } catch (InterruptedException e) {
 
@@ -802,6 +943,11 @@ public class Node {
 
         return fileSize;
     }
+    
+    public long getSharedCapacity() {
+
+    return bitmap.getSize();
+}
 
     public long getCurrentSize() {
 
@@ -820,6 +966,32 @@ public class Node {
 
         return total;
     }
+    
+public int getOnlineNodes() {
+
+    return neighbors.size() + 1;
+}
+    
+    public int getIdealChunkCount() {
+
+    int totalNodes =
+            getOnlineNodes();
+
+    if (totalNodes <= 0) {
+        return chunkCount();
+    }
+
+    return Math.max(
+            1,
+            chunkCount() / totalNodes
+    );
+}
+    
+    public boolean isOverloaded() {
+
+    return chunkCount()
+            > getIdealChunkCount();
+}
 
     // RECUPERAR CHUNKS
     private void loadPersistedChunks() {
@@ -882,4 +1054,225 @@ public class Node {
             }
         }
     }
+    
+                public List<String> getAllNodeIds() {
+
+                List<String> ids =
+                        new ArrayList<>();
+
+                ids.add(id);
+
+                synchronized (neighbors) {
+
+                    for (NodeInfo n : neighbors) {
+
+                        if (
+                                n.nodeId != null
+                                &&
+                                !n.nodeId.isEmpty()
+                        ) {
+
+                            ids.add(n.nodeId);
+                        }
+                    }
+                }
+
+                Collections.sort(ids);
+
+                return ids;
+            }
+            public boolean shouldOwnChunk(
+                int chunkId
+        ) {
+
+            List<String> nodes =
+                    getAllNodeIds();
+
+            if (nodes.isEmpty()) {
+                return true;
+            }
+
+            int ownerIndex =
+                    chunkId % nodes.size();
+
+            return id.equals(
+                    nodes.get(ownerIndex)
+            );
+        }
+            
+            public List<Integer> getChunksToMove() {
+
+    List<Integer> chunksToMove =
+            new ArrayList<>();
+
+    for (
+            Integer chunkId :
+            getMainChunks().keySet()
+    ) {
+
+        if (
+                !shouldOwnChunk(chunkId)
+        ) {
+
+            chunksToMove.add(
+                    chunkId
+            );
+        }
+    }
+
+    return chunksToMove;
+}
+
+public int getChunksToMoveCount() {
+
+    return getChunksToMove().size();
+}
+
+public boolean canMoveChunk(
+        int chunkId
+) {
+
+    NodeInfo owner =
+            getChunkOwner(
+                    chunkId
+            );
+
+    if (owner == null) {
+        return false;
+    }
+
+    return !shouldOwnChunk(
+            chunkId
+    );
+}
+
+public NodeInfo getChunkOwner(
+        int chunkId
+) {
+
+    List<String> ids =
+            getAllNodeIds();
+
+    if (ids.isEmpty()) {
+        return null;
+    }
+
+    int ownerIndex =
+            chunkId % ids.size();
+
+    String ownerId =
+            ids.get(ownerIndex);
+
+    synchronized (neighbors) {
+
+        for (NodeInfo n : neighbors) {
+
+            if (
+                    ownerId.equals(
+                            n.nodeId
+                    )
+            ) {
+
+                return n;
+            }
+        }
+    }
+
+    return null;
+}
+public void printRebalancePlan() {
+
+    List<Integer> chunks =
+            getChunksToMove();
+
+    for (
+            Integer chunkId :
+            chunks
+    ) {
+
+        NodeInfo owner =
+                getChunkOwner(
+                        chunkId
+                );
+
+        if (owner != null) {
+
+            System.out.println(
+                    "Chunk "
+                            + chunkId
+                            + " debería migrarse a "
+                            + owner.nodeId
+            );
+        }
+    }
+}
+
+public void rebalanceStorage() {
+
+    for (
+            Integer chunkId :
+            getChunksToMove()
+    ) {
+
+        NodeInfo owner =
+                getChunkOwner(
+                        chunkId
+                );
+
+        if (owner == null) {
+            continue;
+        }
+
+        System.out.println(
+                "[REBALANCE] "
+                        + chunkId
+                        + " -> "
+                        + owner.nodeId
+        );
+
+        try {
+
+            sendChunk(
+                    owner,
+                    chunkId
+            );
+
+            Thread.sleep(500);
+
+            if (
+                    !shouldOwnChunk(
+                            chunkId
+                    )
+            ) {
+
+                removeChunk(
+                        chunkId
+                );
+
+                System.out.println(
+                        "[REBALANCE OK] Chunk "
+                                + chunkId
+                                + " eliminado localmente"
+                );
+            }
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+        }
+    }
+}
+
+public void clearNeighbors() {
+
+    neighbors.clear();
+}
+
+public List<NodeInfo> getNeighbors() {
+
+    synchronized (neighbors) {
+
+        return new ArrayList<>(neighbors);
+    }
+}
 }

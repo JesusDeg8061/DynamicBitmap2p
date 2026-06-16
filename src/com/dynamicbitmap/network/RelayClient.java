@@ -10,7 +10,7 @@ import java.net.Socket;
 public class RelayClient {
 
     private static final String RELAY_HOST =
-            "localhost";
+            "150.136.38.250";
 
     private static final int RELAY_PORT =
             9090;
@@ -235,6 +235,154 @@ public class RelayClient {
             return null;
         }
     }
+    
+    public static byte[] buildBitmapRequestPayload() {
+
+    try {
+
+        ByteArrayOutputStream baos =
+                new ByteArrayOutputStream();
+
+        DataOutputStream dos =
+                new DataOutputStream(baos);
+
+        dos.writeInt(201);
+
+        dos.flush();
+
+        return baos.toByteArray();
+
+    } catch (Exception e) {
+
+        return null;
+    }
+}
+
+public static boolean isBitmapRequest(
+        byte[] payload
+) {
+
+    try {
+
+        DataInputStream dis =
+                new DataInputStream(
+                        new ByteArrayInputStream(payload)
+                );
+
+        int type =
+                dis.readInt();
+
+        return type == 201;
+
+    } catch (Exception e) {
+
+        return false;
+    }
+}
+
+public static byte[] buildChunkRequestPayload(
+        int chunkIndex
+) {
+
+    try {
+
+        ByteArrayOutputStream baos =
+                new ByteArrayOutputStream();
+
+        DataOutputStream dos =
+                new DataOutputStream(baos);
+
+        dos.writeInt(202);
+
+        dos.writeInt(chunkIndex);
+
+        dos.flush();
+
+        return baos.toByteArray();
+
+    } catch (Exception e) {
+
+        return null;
+    }
+}
+
+public static Integer parseChunkRequestPayload(
+        byte[] payload
+) {
+
+    try {
+
+        DataInputStream dis =
+                new DataInputStream(
+                        new ByteArrayInputStream(payload)
+                );
+
+        int type =
+                dis.readInt();
+
+        if (type != 202) {
+            return null;
+        }
+
+        return dis.readInt();
+
+    } catch (Exception e) {
+
+        return null;
+    }
+}
+
+public static byte[] buildBitmapResponsePayload(
+        String bitmap
+) {
+
+    try {
+
+        ByteArrayOutputStream baos =
+                new ByteArrayOutputStream();
+
+        DataOutputStream dos =
+                new DataOutputStream(baos);
+
+        dos.writeInt(203);
+
+        dos.writeUTF(bitmap);
+
+        dos.flush();
+
+        return baos.toByteArray();
+
+    } catch (Exception e) {
+
+        return null;
+    }
+}
+
+public static String parseBitmapResponsePayload(
+        byte[] payload
+) {
+
+    try {
+
+        DataInputStream dis =
+                new DataInputStream(
+                        new ByteArrayInputStream(payload)
+                );
+
+        int type =
+                dis.readInt();
+
+        if (type != 203) {
+            return null;
+        }
+
+        return dis.readUTF();
+
+    } catch (Exception e) {
+
+        return null;
+    }
+}
 
     public static class ChunkPayload {
 

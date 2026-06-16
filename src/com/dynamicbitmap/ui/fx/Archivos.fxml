@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.dynamicbitmap.ui.fx.ArchivosController">
+
+    <top>
+
+        <VBox spacing="10"
+              style="-fx-padding:20;">
+
+            <children>
+
+                <Label text="Mis Archivos"
+                       styleClass="title"/>
+
+            </children>
+
+        </VBox>
+
+    </top>
+
+    <center>
+
+        <ListView fx:id="filesList"
+                  BorderPane.alignment="CENTER"/>
+
+    </center>
+
+    <bottom>
+
+        <HBox spacing="10"
+              style="-fx-padding:15;">
+
+            <children>
+
+                <Button text="Actualizar"
+                        styleClass="action-button"
+                        onAction="#refreshFiles"/>
+
+                <Button text="Descargar"
+                        styleClass="action-button"
+                        onAction="#downloadSelected"/>
+
+            </children>
+
+        </HBox>
+
+    </bottom>
+
+</BorderPane>

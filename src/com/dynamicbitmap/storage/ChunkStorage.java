@@ -125,4 +125,80 @@ public class ChunkStorage {
                         name.endsWith(".chunk")
         );
     }
+    
+    public static long getUsedStorage(
+        String nodeId
+) {
+
+    long total = 0;
+
+    File nodeDir =
+            new File(
+                    BASE_DIR + "/" + nodeId
+            );
+
+    if (!nodeDir.exists()) {
+        return 0;
+    }
+
+    total += calculateSize(nodeDir);
+
+    return total;
+}
+
+private static long calculateSize(
+        File file
+) {
+
+    if (file.isFile()) {
+        return file.length();
+    }
+
+    long size = 0;
+
+    File[] children =
+            file.listFiles();
+
+    if (children != null) {
+
+        for (File child : children) {
+
+            size +=
+                    calculateSize(child);
+        }
+    }
+
+    return size;
+}
+
+public static void deleteChunk(
+        String nodeId,
+        String fileId,
+        int chunkId
+) {
+
+    try {
+
+        File file =
+                new File(
+                        BASE_DIR
+                                + "/"
+                                + nodeId
+                                + "/"
+                                + fileId
+                                + "/"
+                                + chunkId
+                                + ".chunk"
+                );
+
+        if (file.exists()) {
+
+            file.delete();
+        }
+
+    } catch (Exception e) {
+
+        e.printStackTrace();
+    }
+}
 }

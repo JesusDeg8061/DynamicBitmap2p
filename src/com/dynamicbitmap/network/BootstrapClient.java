@@ -12,7 +12,7 @@ import java.util.List;
 public class BootstrapClient {
 
     private static final String BOOTSTRAP_URL =
-            "http://localhost:8080";
+            "http://150.136.38.250:8080";
 
     public static void register(
             String nodeId,

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.dynamicbitmap.ui.fx.RedController">
+
+    <center>
+
+        <VBox spacing="20"
+              styleClass="content">
+
+            <children>
+
+                <Label text="Red"
+                       styleClass="title"/>
+
+                <VBox spacing="10"
+                      styleClass="stat-card">
+
+                    <children>
+
+                        <Label text="Mis Contactos"/>
+
+                        <ListView fx:id="contactsList"
+                                  prefHeight="400"/>
+
+                    </children>
+
+                </VBox>
+
+            </children>
+
+        </VBox>
+
+    </center>
+
+</BorderPane>

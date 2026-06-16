@@ -1,0 +1,116 @@
+.root{
+    -fx-background-color:#1a1a1a;
+}
+
+.sidebar{
+    -fx-background-color:#0f0f0f;
+    -fx-padding:25;
+    -fx-border-color:#00aa44;
+    -fx-border-width:0 1 0 0;
+}
+
+.logo{
+    -fx-font-size:24px;
+    -fx-font-weight:bold;
+    -fx-text-fill:#00ff66;
+}
+
+.menu-button{
+    -fx-background-color:transparent;
+    -fx-text-fill:#00ff66;
+    -fx-font-size:15px;
+    -fx-alignment:CENTER_LEFT;
+}
+
+.menu-button:hover{
+    -fx-background-color:#1f2a1f;
+    -fx-border-color:#00aa44;
+    -fx-border-width:0 0 0 3;
+}
+
+.content{
+    -fx-padding:30;
+}
+
+.title{
+    -fx-font-size:28px;
+    -fx-font-weight:bold;
+    -fx-text-fill:#00ff66;
+}
+
+.stat-card{
+    -fx-background-color:#252525;
+    -fx-background-radius:15;
+    -fx-padding:20;
+    -fx-spacing:10;
+    -fx-pref-width:220;
+
+    -fx-border-color:#008f3a;
+    -fx-border-radius:15;
+    -fx-border-width:1;
+}
+
+.stat-number{
+    -fx-font-size:28px;
+    -fx-font-weight:bold;
+    -fx-text-fill:#00ff66;
+}
+
+.action-button{
+    -fx-background-color:#008f3a;
+    -fx-text-fill:white;
+    -fx-font-size:15px;
+    -fx-background-radius:10;
+    -fx-padding:12 24 12 24;
+}
+
+.action-button:hover{
+    -fx-background-color:#00aa44;
+}
+
+.section-title{
+    -fx-font-size:18px;
+    -fx-font-weight:bold;
+    -fx-text-fill:#00ff66;
+}
+
+.storage-label{
+    -fx-font-size:18px;
+    -fx-font-weight:bold;
+    -fx-text-fill:#00ff66;
+}
+
+.label{
+    -fx-text-fill:#d0d0d0;
+}
+
+.text-field{
+    -fx-background-color:#202020;
+    -fx-text-fill:#00ff66;
+    -fx-border-color:#008f3a;
+    -fx-border-radius:5;
+}
+
+.list-view{
+    -fx-background-color:#202020;
+    -fx-border-color:#008f3a;
+}
+
+.list-cell{
+    -fx-background-color:#202020;
+    -fx-text-fill:#00ff66;
+}
+
+.list-cell:filled:selected{
+    -fx-background-color:#008f3a;
+    -fx-text-fill:white;
+}
+
+.check-box{
+    -fx-text-fill:#00ff66;
+}
+
+.scroll-pane{
+    -fx-background:#1a1a1a;
+    -fx-background-color:#1a1a1a;
+}

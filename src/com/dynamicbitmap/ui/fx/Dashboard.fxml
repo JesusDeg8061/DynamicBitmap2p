@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.dynamicbitmap.ui.fx.DashboardController">
+
+    <left>
+
+        <VBox prefWidth="250"
+              spacing="20"
+              styleClass="sidebar">
+
+            <children>
+
+                <Label text="DynamicBitmap"
+                       styleClass="logo"/>
+
+                <Button text="Dashboard"
+                        styleClass="menu-button"/>
+
+                <Button text="Archivos"
+                        styleClass="menu-button"
+                        onAction="#openFiles"/>
+
+                 <Button text="Red"
+                        styleClass="menu-button"
+                        onAction="#openRed"/>
+
+                <Button text="Configuración"
+                        styleClass="menu-button"
+                        onAction="#openConfiguracion"/>
+
+                <Region VBox.vgrow="ALWAYS"/>
+
+                <Label text="Espacio compartido"/>
+
+                <Label fx:id="sharedSpaceLabel"
+                       text="0 GB"
+                       styleClass="storage-label"/>
+
+            </children>
+
+        </VBox>
+
+    </left>
+
+    <center>
+
+        <VBox spacing="20"
+              styleClass="content">
+
+            <children>
+
+                <Label text="Bienvenido a DynamicBitmap"
+                       styleClass="title"/>
+
+                <HBox spacing="20">
+
+                    <children>
+
+                        <VBox styleClass="stat-card">
+                            <children>
+
+                                <Label text="Nodos Online"/>
+
+                                <Label fx:id="nodesLabel"
+                                       text="0"
+                                       styleClass="stat-number"/>
+
+                            </children>
+                        </VBox>
+
+                        <VBox styleClass="stat-card">
+                            <children>
+
+                                <Label text="Archivos"/>
+
+                                <Label fx:id="filesCountLabel"
+                                       text="0"
+                                       styleClass="stat-number"/>
+
+                            </children>
+                        </VBox>
+
+                        <VBox styleClass="stat-card">
+                            <children>
+
+                                <Label text="Almacenamiento"/>
+
+                                <Label fx:id="storageLabel"
+                                       text="0 GB"
+                                       styleClass="stat-number"/>
+
+                            </children>
+                        </VBox>
+                        
+                        <VBox styleClass="stat-card">
+                            <children>
+                                <Label text="Redistribuir"/>
+                                <Label fx:id="rebalanceLabel"
+                                       text="0"
+                                       styleClass="stat-number"/>
+                            </children>
+                        </VBox>
+
+                    </children>
+
+                </HBox>
+
+                <HBox spacing="20">
+
+                    <children>
+
+                        <Button fx:id="uploadButton"
+                                text="Compartir Archivo"
+                                styleClass="action-button"
+                                onAction="#uploadFile"/>
+
+                        <Button fx:id="filesButton"
+                                text="Mis Archivos"
+                                styleClass="action-button"
+                                onAction="#openFiles"/>
+
+                    </children>
+
+                </HBox>
+
+            </children>
+
+        </VBox>
+
+    </center>
+
+</BorderPane>

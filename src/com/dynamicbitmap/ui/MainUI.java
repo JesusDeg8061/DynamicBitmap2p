@@ -1,5 +1,7 @@
 package com.dynamicbitmap.ui;
 
+import com.dynamicbitmap.core.AppContext;
+
 import com.dynamicbitmap.network.PeerDiscovery;
 import com.dynamicbitmap.network.BootstrapClient;
 import com.dynamicbitmap.network.RelayClient;
@@ -67,6 +69,13 @@ public class MainUI extends JFrame {
                 5000 + (int)(Math.random() * 1000);
 
         node = new Node(id, 100);
+        node.clearNeighbors();
+        AppContext.node = node;
+        AppContext.backend = this;
+        AppContext.myFiles = myFiles;
+        AppContext.fileSizes = fileSizes;
+        AppContext.fileIds = fileIds;
+        AppContext.fileKeys = fileKeys;
 
         relayClient =
                 new RelayClient(
@@ -77,28 +86,112 @@ public class MainUI extends JFrame {
                 relayClient
         );
 
-        relayClient.connect((fromNodeId, payload) -> {
+relayClient.connect((fromNodeId, payload) -> {
 
-            RelayClient.ChunkPayload chunk =
-                    RelayClient.parseChunkPayload(
-                            payload
+    try {
+
+        RelayClient.ChunkPayload chunk =
+                RelayClient.parseChunkPayload(
+                        payload
+                );
+
+        if (chunk != null) {
+
+            node.receiveRelayChunk(
+                    chunk.chunkIndex,
+                    chunk.data
+            );
+
+            log(
+                    "Chunk "
+                            + chunk.chunkIndex
+                            + " recibido por relay desde "
+                            + fromNodeId
+            );
+
+            return;
+        }
+
+        // REQUEST BITMAP
+        if (
+                RelayClient.isBitmapRequest(
+                        payload
+                )
+        ) {
+
+            byte[] response =
+                    RelayClient.buildBitmapResponsePayload(
+                            node.getBitmap().toString()
                     );
 
-            if (chunk != null) {
+            relayClient.send(
+                    fromNodeId,
+                    response
+            );
 
-                node.receiveRelayChunk(
-                        chunk.chunkIndex,
-                        chunk.data
+            return;
+        }
+
+        // RESPONSE BITMAP
+        String bitmapResponse =
+                RelayClient.parseBitmapResponsePayload(
+                        payload
                 );
 
-                log(
-                        "Chunk "
-                                + chunk.chunkIndex
-                                + " recibido por relay desde "
-                                + fromNodeId
+        if (bitmapResponse != null) {
+
+            java.lang.reflect.Field field =
+                    Node.class.getDeclaredField(
+                            "relayBitmapResponses"
+                    );
+
+            field.setAccessible(true);
+
+            Map<String, String> map =
+                    (Map<String, String>)
+                            field.get(node);
+
+            map.put(
+                    fromNodeId,
+                    bitmapResponse
+            );
+
+            return;
+        }
+
+        // REQUEST CHUNK
+        Integer requestedChunk =
+                RelayClient.parseChunkRequestPayload(
+                        payload
+                );
+
+        if (requestedChunk != null) {
+
+            byte[] data =
+                    node.getChunk(
+                            requestedChunk
+                    );
+
+            if (data != null) {
+
+                byte[] response =
+                        RelayClient.buildChunkPayload(
+                                requestedChunk,
+                                data
+                        );
+
+                relayClient.send(
+                        fromNodeId,
+                        response
                 );
             }
-        });
+        }
+
+    } catch (Exception e) {
+
+        e.printStackTrace();
+    }
+});
 
         loadCatalogIntoUI();
 
@@ -205,7 +298,7 @@ public class MainUI extends JFrame {
                     List<byte[]> chunks =
                             FileChunker.splitBytes(
                                     encrypted,
-                                    65536
+                                    524288
                             );
 
                     // METADATA LOCAL
@@ -242,6 +335,12 @@ public class MainUI extends JFrame {
                             file.getName(),
                             key.getEncoded()
                     );
+                    
+                    AppContext.myFiles = myFiles;
+                    AppContext.fileSizes = fileSizes;
+                    AppContext.fileIds = fileIds;
+                    AppContext.fileKeys = fileKeys;
+                    
 
                     KeyStorage.saveKey(
                             node.getId(),
@@ -282,11 +381,28 @@ public class MainUI extends JFrame {
 
         startDiscovery();
 
-        setDefaultCloseOperation(
-                JFrame.EXIT_ON_CLOSE
-        );
+setDefaultCloseOperation(
+        JFrame.EXIT_ON_CLOSE
+);
 
-        setVisible(true);
+addWindowListener(
+        new java.awt.event.WindowAdapter() {
+
+            @Override
+            public void windowClosing(
+                    java.awt.event.WindowEvent e
+            ) {
+
+                node.clearNeighbors();
+
+                PeerDiscovery.clearPeers();
+
+                shownPeers.clear();
+            }
+        }
+);
+
+setVisible(true);
     }
 
     // CARGAR CATÁLOGO PERSISTENTE EN LA UI
@@ -361,64 +477,7 @@ public class MainUI extends JFrame {
         styleButton(download);
 
         // ACTUALIZACIÓN EN TIEMPO REAL
-        new Thread(() -> {
 
-            while (true) {
-
-                try {
-
-                    Thread.sleep(1000);
-
-                    SwingUtilities.invokeLater(() -> {
-
-                        String selected =
-                                list.getSelectedValue();
-
-                        model.clear();
-
-                        for (
-                                String name :
-                                myFiles.keySet()
-                        ) {
-
-                            long total =
-                                    fileSizes.getOrDefault(
-                                            name,
-                                            0L
-                                    );
-
-                            long current =
-                                    node.getCurrentSize();
-
-                            String item =
-                                    name
-                                            + " | "
-                                            + formatSize(current)
-                                            + " / "
-                                            + formatSize(total);
-
-                            model.addElement(item);
-
-                            if (
-                                    selected != null
-                                            &&
-                                            selected.startsWith(name)
-                            ) {
-
-                                list.setSelectedValue(
-                                        item,
-                                        true
-                                );
-                            }
-                        }
-                    });
-
-                } catch (Exception e) {
-
-                    e.printStackTrace();
-                }
-            }
-        }).start();
 
         // DESCARGAR
         download.addActionListener(e -> {
@@ -532,6 +591,10 @@ public class MainUI extends JFrame {
     private void startDiscovery() {
 
         log("Nodo en puerto " + myPort);
+        
+        PeerDiscovery.clearPeers();
+
+        shownPeers.clear();
 
         PeerDiscovery.startListening(myPort);
 
@@ -551,10 +614,30 @@ public class MainUI extends JFrame {
 
                     Thread.sleep(1500);
 
-                    for (
-                            String peer :
-                            PeerDiscovery.getPeers()
-                    ) {
+                    for (String peer : PeerDiscovery.getPeers()) {
+
+    try {
+
+        String[] parts =
+                peer.split(":");
+
+        String host =
+                parts[0];
+
+        int port =
+                Integer.parseInt(parts[1]);
+
+        if (port == myPort) {
+
+            PeerDiscovery.removePeer(peer);
+            continue;
+        }
+
+    } catch (Exception e) {
+
+        PeerDiscovery.removePeer(peer);
+        continue;
+    }
 
                         if (shownPeers.add(peer)) {
 
@@ -597,60 +680,56 @@ public class MainUI extends JFrame {
         }).start();
 
         // DETECTAR NODOS INTERNET
-        new Thread(() -> {
+        // DETECTAR NODOS INTERNET
+new Thread(() -> {
 
-            while (true) {
+    while (true) {
 
-                try {
+        try {
 
-                    Thread.sleep(5000);
+            Thread.sleep(5000);
 
-                    BootstrapClient.register(
-                            node.getId(),
-                            myPort
+            BootstrapClient.register(
+                    node.getId(),
+                    myPort
+            );
+
+            List<NodeInfo> peers =
+                    BootstrapClient.getPeers(
+                            node.getId()
                     );
 
-                    for (
-                            NodeInfo peer :
-                            BootstrapClient.getPeers(
-                                    node.getId()
-                            )
-                    ) {
+            node.clearNeighbors();
 
-                        String peerKey =
-                                peer.host
-                                        + ":"
-                                        + peer.port;
+            for (NodeInfo peer : peers) {
 
-                        if (shownPeers.add(peerKey)) {
-
-                            log(
-                                    "Nodo internet detectado: "
-                                            + peerKey
-                            );
-
-                            node.addNeighbor(peer);
-
-                            new Thread(() -> {
-
-                                try {
-
-                                    Thread.sleep(500);
-
-                                    node.smartReplicate();
-
-                                } catch (Exception ignored) {}
-                            }).start();
-                        }
-                    }
-
-                } catch (Exception e) {
-
-                    e.printStackTrace();
-                }
+                node.addNeighbor(peer);
             }
-        }).start();
 
+            System.out.println(
+                    "Vecinos reales: "
+                            + node.getNeighbors().size()
+            );
+
+            for (NodeInfo peer : node.getNeighbors()) {
+
+                System.out.println(
+                        " -> "
+                                + peer.host
+                                + ":"
+                                + peer.port
+                                + " ID="
+                                + peer.nodeId
+                );
+            }
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+        }
+    }
+
+}).start();
         node.startAutoSync(3000);
     }
 
@@ -670,7 +749,7 @@ public class MainUI extends JFrame {
         );
     }
 
-    // FORMATO TAMAÑO
+    // FORMATO TAMAÑO   
     private String formatSize(long size) {
 
         if (size < 1024)
@@ -684,4 +763,104 @@ public class MainUI extends JFrame {
 
         return (size / (1024 * 1024 * 1024)) + " GB";
     }
+    
+    public void uploadFile(File file) {
+
+    try {
+
+        if (file != null) {
+
+            long fileSize =
+                    file.length();
+
+            fileSizes.put(
+                    file.getName(),
+                    fileSize
+            );
+
+            node.setFileSize(fileSize);
+
+            String fileId =
+                    CryptoUtils.sha256(file);
+
+            fileIds.put(
+                    file.getName(),
+                    fileId
+            );
+
+            byte[] fileData =
+                    Files.readAllBytes(
+                            file.toPath()
+                    );
+
+            SecretKey key =
+                    CryptoUtils.generateKey();
+
+            byte[] encrypted =
+                    CryptoUtils.encrypt(
+                            fileData,
+                            key
+                    );
+
+            List<byte[]> chunks =
+                    FileChunker.splitBytes(
+                            encrypted,
+                            524288
+                    );
+
+            FileMetadata metadata =
+                    new FileMetadata(
+                            fileId,
+                            file.getName(),
+                            chunks.size(),
+                            file.length(),
+                            encrypted.length
+                    );
+
+            node.registerFile(
+                    metadata
+            );
+
+            for (
+                    int i = 0;
+                    i < chunks.size();
+                    i++
+            ) {
+
+                node.storeChunk(
+                        i,
+                        chunks.get(i)
+                );
+            }
+
+            myFiles.put(
+                    file.getName(),
+                    chunks.size()
+            );
+
+            fileKeys.put(
+                    file.getName(),
+                    key.getEncoded()
+            );
+
+            AppContext.myFiles = myFiles;
+            AppContext.fileSizes = fileSizes;
+            AppContext.fileIds = fileIds;
+            AppContext.fileKeys = fileKeys;
+
+            KeyStorage.saveKey(
+                    node.getId(),
+                    fileId,
+                    key.getEncoded()
+            );
+
+            node.smartReplicate();
+        }
+
+    } catch (Exception ex) {
+
+        ex.printStackTrace();
+    }
+}
+    
 }

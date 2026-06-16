@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.dynamicbitmap.ui.fx.ConfiguracionController">
+
+    <center>
+
+        <VBox spacing="20"
+              styleClass="content">
+
+            <children>
+
+                <Label text="Configuración"
+                       styleClass="title"/>
+
+                <VBox spacing="15"
+                      styleClass="stat-card">
+
+                    <children>
+
+                        <Label text="Mi ID"/>
+
+                        <TextField fx:id="myIdField"
+                                   editable="false"/>
+
+                        <Button text="Copiar ID"
+                                onAction="#copyId"
+                                styleClass="action-button"/>
+
+                    </children>
+
+                </VBox>
+
+                <VBox spacing="15"
+                      styleClass="stat-card">
+
+                    <children>
+
+                        <Label text="Agregar Nodo"/>
+
+                        <TextField fx:id="remoteIdField"
+                                   promptText="ID remoto"/>
+
+                        <TextField fx:id="aliasField"
+                                   promptText="Alias"/>
+
+                        <Button text="Agregar"
+                                onAction="#addContact"
+                                styleClass="action-button"/>
+
+                    </children>
+
+                </VBox>
+
+                <VBox spacing="15"
+                      styleClass="stat-card">
+
+                    <children>
+
+                        <Label text="Apariencia"/>
+
+                        <CheckBox fx:id="darkModeCheck"
+                                  text="Modo oscuro"
+                                  onAction="#toggleDarkMode"/>
+
+                    </children>
+
+                </VBox>
+
+            </children>
+
+        </VBox>
+
+    </center>
+
+</BorderPane>

@@ -1,166 +1,233 @@
-#  DynamicBitmap Network
+# DynamicBitmap Network
 
-### Sistema P2P descentralizado con distribución inteligente de archivos
-
----
-
-##  Descripción
-
-**DynamicBitmap Network** es una red **peer-to-peer (P2P) completamente descentralizada** que permite distribuir archivos entre múltiples nodos sin depender de un servidor central.
-
-El sistema divide archivos en **chunks**, los distribuye en la red y los reconstruye dinámicamente cuando el usuario lo solicita, implementando un modelo inspirado en redes tipo BitTorrent pero con arquitectura propia.
+### Plataforma de almacenamiento distribuido P2P con redistribución inteligente de datos
 
 ---
 
-##  Características principales
+## Descripción
 
-*  **Red descentralizada real**
+**DynamicBitmap Network** es una plataforma de almacenamiento distribuido Peer-to-Peer (P2P) desarrollada en Java que permite fragmentar archivos en múltiples chunks, distribuirlos automáticamente entre nodos de la red y reconstruirlos dinámicamente bajo demanda.
 
-  * Sin servidor central
-  * Descubrimiento automático de nodos (Peer Discovery)
-
-*  **Distribución por chunks**
-
-  * División de archivos en fragmentos
-  * Almacenamiento distribuido entre nodos
-
-*  **Auto-replicación inteligente**
-
-  * Sincronización automática entre nodos
-  * Redistribución dinámica al entrar nuevos peers
-
-*  **Reconstrucción de archivos**
-
-  * Ensamblado completo desde múltiples nodos
-  * Recuperación bajo demanda
-
-*  **Bitmap distribuido**
-
-  * Cada nodo mantiene estado de chunks
-  * Intercambio eficiente de información
-
-*  **Preparado para seguridad**
-
-  * Integración con hash SHA-256 (base implementada)
+El objetivo del proyecto es crear una red de almacenamiento descentralizada capaz de aprovechar el espacio disponible de múltiples equipos para compartir y almacenar información de forma distribuida, resiliente y escalable.
 
 ---
 
-##  Monitor de Red (Admin)
+## Características principales
 
-El sistema incluye un **monitor visual en tiempo real** para administración:
+### Almacenamiento distribuido
 
-*  Nodos activos/inactivos
-*  Conexiones dinámicas entre nodos
-*  Chunks en movimiento (animación)
-*  Velocidad por nodo (chunks/seg)
-*  Contadores de envío/recepción
-*  Visualización tipo red circular
+* Fragmentación automática de archivos en chunks.
+* Distribución dinámica de chunks entre nodos.
+* Reconstrucción automática de archivos completos.
+* Persistencia local de chunks en disco.
+
+### Redistribución inteligente
+
+* Balanceo automático de almacenamiento.
+* Redistribución cuando nuevos nodos se conectan.
+* Recuperación automática de chunks cuando nodos abandonan la red.
+* Monitoreo de chunks pendientes de movimiento.
+
+### Red P2P
+
+* Comunicación entre nodos mediante sockets TCP.
+* Descubrimiento de peers mediante Bootstrap Server.
+* Relay Server para soporte de conectividad.
+* Sincronización automática de metadatos y bitmaps.
+
+### Bitmap distribuido
+
+* Cada nodo mantiene un mapa de chunks disponibles.
+* Intercambio eficiente de disponibilidad.
+* Descarga únicamente de chunks faltantes.
+
+### Persistencia
+
+* Almacenamiento permanente de chunks.
+* Recuperación automática después de reiniciar la aplicación.
+* Sincronización automática al reconectarse a la red.
+
+### Interfaz gráfica moderna
+
+* Dashboard en tiempo real.
+* Gestión de archivos compartidos.
+* Gestión de contactos y nodos.
+* Estadísticas de almacenamiento.
+* Tema claro y tema Matrix.
+* Preferencias persistentes.
+
+### Gestión de identidad
+
+* Generación automática de NodeID único.
+* Administración de contactos mediante identificadores de nodo.
+* Preparación para comunicación cifrada entre peers.
 
 ---
 
-##  Arquitectura
+## Dashboard
 
-```
-Usuario (MainUI)
+El sistema incluye un panel administrativo en tiempo real que muestra:
+
+* Nodos conectados.
+* Archivos compartidos.
+* Almacenamiento utilizado.
+* Espacio distribuido.
+* Chunks pendientes de redistribución.
+
+---
+
+## Arquitectura
+
+```text
+Usuario (JavaFX UI)
         ↓
-Nodo (Node)
+Dashboard / Archivos / Red
         ↓
-Red P2P (Sockets + Discovery)
+Node
         ↓
-Distribución de chunks
+Bitmap Distribuido
         ↓
-Monitor (NetworkMonitorUI)
-```
-
-### Componentes clave
-
-| Componente           | Descripción                              |
-| -------------------- | ---------------------------------------- |
-| `Node`               | Manejo de chunks, replicación y descarga |
-| `NodeServer`         | Comunicación entre nodos                 |
-| `PeerDiscovery`      | Descubrimiento automático de peers       |
-| `FileChunker`        | División de archivos                     |
-| `FileAssembler`      | Reconstrucción                           |
-| `NetworkEventSender` | Eventos hacia monitor                    |
-| `NetworkMonitorUI`   | Visualización en tiempo real             |
-
----
-
-##  Flujo del sistema
-
-1. Usuario sube archivo
-2. Se divide en chunks
-3. Se distribuye entre nodos
-4. Nuevos nodos se integran automáticamente
-5. Se sincronizan chunks faltantes
-6. Usuario puede reconstruir el archivo
-
----
-
-##  Ejecución
-
-### 1. Ejecutar nodos
-
-```bash
-Run MainUI
+Chunk Storage
+        ↓
+Red P2P (TCP)
+        ↓
+Bootstrap + Relay
 ```
 
-Puedes abrir múltiples instancias para simular red.
+### Componentes principales
+
+| Componente      | Función                             |
+| --------------- | ----------------------------------- |
+| Node            | Gestión de chunks y sincronización  |
+| DynamicBitmap   | Control de disponibilidad de chunks |
+| ChunkStorage    | Persistencia local                  |
+| FileChunker     | División de archivos                |
+| FileAssembler   | Reconstrucción de archivos          |
+| NodeServer      | Comunicación entre nodos            |
+| BootstrapClient | Descubrimiento de peers             |
+| RelayClient     | Comunicación mediante relay         |
+| ContactManager  | Gestión de contactos                |
+| ThemeManager    | Gestión de temas                    |
+| JavaFX UI       | Interfaz de usuario                 |
 
 ---
 
-### 2. Ejecutar monitor (admin)
+## Flujo de funcionamiento
 
-```bash
-Run NetworkMonitorUI
-```
-
----
-
-## Innovación del proyecto
-
-* ✔ Arquitectura 100% descentralizada
-* ✔ Auto-sincronización sin intervención manual
-* ✔ Visualización en tiempo real del tráfico
-* ✔ Diseño modular extensible
+1. Usuario comparte un archivo.
+2. El archivo se divide en chunks.
+3. Los chunks se distribuyen entre nodos.
+4. Cada nodo almacena únicamente la porción que le corresponde.
+5. Nuevos nodos reciben automáticamente parte de los datos.
+6. Si un nodo abandona la red, los chunks son redistribuidos.
+7. El archivo puede reconstruirse bajo demanda desde múltiples nodos.
 
 ---
 
-## Limitaciones actuales
+## Características técnicas
 
-* No hay persistencia global de archivos (depende de nodos activos)
-* Distribución no completamente balanceada (en mejora)
-* No hay control de replicación máxima por chunk
-* Seguridad básica (SHA-256 en proceso de integración completa)
+### Sistemas distribuidos
+
+* Fragmentación distribuida.
+* Balanceo dinámico.
+* Redistribución automática.
+* Sincronización entre nodos.
+
+### Concurrencia
+
+* Multithreading.
+* Sincronización de procesos de red.
+* Transferencia paralela de chunks.
+
+### Redes
+
+* TCP/IP.
+* Peer Discovery.
+* Bootstrap Server.
+* Relay Server.
 
 ---
 
-##  Tecnologías utilizadas
+## Seguridad
 
-* Java (Swing UI)
-* Sockets (TCP/UDP)
+Actualmente incluye:
+
+* Hashing SHA-256 para verificación de integridad.
+* Identificadores únicos por nodo.
+
+En desarrollo:
+
+* Cifrado AES para chunks.
+* Mensajería segura entre contactos.
+* Intercambio seguro de claves.
+
+---
+
+## Tecnologías utilizadas
+
+* Java 21
+* JavaFX
+* TCP/IP Sockets
 * Multithreading
-* Arquitectura P2P
+* Oracle Cloud Infrastructure (OCI)
+* WiX Toolset
+* JPackage
+* Git
+* Programación Orientada a Objetos (POO)
 
 ---
 
-##  Estado del proyecto
+## Estado del proyecto
 
-```
-✔ Funcional
-✔ Red distribuida activa
-✔ Monitor en tiempo real
-🚧 En evolución
-```
-##  Licencia
+```text
+✔ Compartición de archivos
+✔ Distribución de chunks
+✔ Persistencia local
+✔ Redistribución automática
+✔ Dashboard JavaFX
+✔ Gestión de contactos
+✔ Tema Matrix
+✔ Instalador Windows (.exe)
 
-Uso libre para fines educativos y experimentales.
+🚧 Mensajería P2P
+🚧 Cifrado AES
+🚧 Eliminación completa de dependencias relay
+🚧 Replicación avanzada
+```
+
+---
+
+## Instalación
+
+### Windows
+
+Ejecutar:
+
+```text
+DynamicBitmap-1.0.exe
+```
+
+El instalador incluye:
+
+* Runtime Java integrado
+* Configuración automática
+* Acceso directo
+* Menú Inicio
+
+No se requiere instalación previa de Java.
 
 ---
 
 ## Autor
 
 Jesus Alberto Degollado Lopez
+
 ---
 
-⭐ Si te gusta el proyecto, dale estrella en GitHub.
+## Licencia
+
+Proyecto experimental y educativo.
+
+---
+
+⭐ Si te interesa el almacenamiento distribuido, los sistemas P2P y las arquitecturas descentralizadas, no olvides dejar una estrella en GitHub.
